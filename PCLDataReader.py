@@ -19,7 +19,14 @@ import sys
 
 def do_xml_parse(fp, tag, max_elements=None, progress_message=None):
     """ 
-    Parses cleaned up spacy-processed XML files
+    
+    summary: Parses cleaned up spacy-processed XML files
+    Args: 
+        - fp: file to be read
+        - tag: string for the xml element name
+        - max_elements: # of max elements to cut off afterwards
+    Return: a xml tree element
+
     """
     fp.seek(0)
 
@@ -33,7 +40,13 @@ def do_xml_parse(fp, tag, max_elements=None, progress_message=None):
 
 def short_xml_parse(fp, tag, max_elements=None): 
     """ 
-    Parses cleaned up spacy-processed XML files (but not very well)
+    summary: Parses cleaned up spacy-processed XML files (but not very well)
+    Args:
+        - fp: file to be read
+        - tag: string for the xml element name
+        - max_elements: # of max elements to cut off afterwards
+    Return:
+        - list of elements
     """
     elements = etree.parse(fp).findall(tag)
     N = max_elements if max_elements is not None else len(elements)
@@ -45,6 +58,16 @@ def short_xml_parse(fp, tag, max_elements=None):
 
 class PCLVocab(): 
     def __init__(self, vocab_file, vocab_size, num_stop_words): 
+        """
+        summary: Initializes a PCLVocab. Creates a _words list and _dict
+        Args:
+            - vocab_file: open text file. Should have one word per line
+            - vocab_size: how many words to keep
+            - num_stop_words: # of lines to skip at the beginning of the code
+            
+
+        """
+
         start_index = 0 if num_stop_words is None else num_stop_words
         end_index = start_index + vocab_size if vocab_size is not None else None
 
@@ -52,12 +75,19 @@ class PCLVocab():
         self._dict = dict([(w, i) for (i, w) in enumerate(self._words)])
 
     def __len__(self): 
+        """
+        Returns the # of distinct words
+        """
         return len(self._dict)
 
     def index_to_label(self, i): 
+        """
+
+        """
         return self._words[i]
 
     def __getitem__(self, key):
+        """returns the word at the index, or None"""
         if key in self._dict: return self._dict[key]
         else: return None
 
@@ -67,6 +97,9 @@ class PCLVocab():
 
 class PCLLabels(ABC):
     def __init__(self): 
+        """
+        summary: sets labels and _label_list to None
+        """
         self.labels = None
         self._label_list = None
 
@@ -75,6 +108,12 @@ class PCLLabels(ABC):
         return self._label_list[index]
 
     def process(self, label_file, max_instances=None):
+        """
+        returns a list of ints in the order they appear in the document
+        args:
+            - label_file: set of sorted labels,
+            - max_instances: sets the max number of instances to be processed, before truncating the rest
+        """
         y_labeled = list(map(self._extract_label, do_xml_parse(label_file, 'example', max_elements=max_instances)))
         if self.labels is None:
             self._label_list = sorted(set(y_labeled))
@@ -94,13 +133,29 @@ class PCLLabels(ABC):
 
 class PCLFeatures(ABC): 
     def __init__(self, vocab):
+        """
+        initializes an initial_vocab set to the input and creates an empty DictVectorizer
+        """
         self.initial_vocab = vocab
         self.vectorizer = DictVectorizer(sparse=True)
 
     def extract_text(self, example):
+        """
+        concatenates text and returns it as a list split by whitespite. all strings are set to lowercase
+        args: list of string tokens
+        return: list of strings
+        """
         return unescape("".join([x for x in example.itertext()]).lower()).split()
 
     def process(self, data_file, max_instances=None):
+        """
+        args:
+            - data_file
+            - max_instaneces: # of lines it will process before it cuts off. 
+
+        return: (x, ids) which is
+        tuple of  scipy sparse matrix---stores the counts for each feature in each example, list of id attribute strings
+        """
         if max_instances == None:
             N = len([1 for example in do_xml_parse(data_file, 'example')])
         else:
